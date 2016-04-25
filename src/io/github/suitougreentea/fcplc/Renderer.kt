@@ -9,7 +9,7 @@ import java.util.ArrayList
 import java.util.Comparator
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
-public class Renderer(val res: SystemResource): EventHandler {
+public class Renderer(val res: Res): EventHandler {
 
   var timer = 0
   fun increaseTimer(){
@@ -42,7 +42,8 @@ public class Renderer(val res: SystemResource): EventHandler {
     res.getImage(Res.Img.background).draw()
 
     g.pushTransform()
-    g.translate(280f, 92f)
+    //g.translate(280f, 92f)
+    g.translate(0f, 92f)
     g.setColor(Color(0f, 0f, 0f, 0.6f))
     g.fillRect(0f, 0f, logic.width * 40f, logic.height * 40f)
     g.setWorldClip(0f, 0f, logic.width * 40f, logic.height * 40f)
@@ -77,12 +78,12 @@ public class Renderer(val res: SystemResource): EventHandler {
   }
 
   override fun erase(logic: GameLogic, chain: Boolean, eraseList: Set<EraseList>, eraseListGarbage: Set<EraseList>) {
-    val order = eraseList.sortBy(Comparator { a, b -> if(a.y < b.y) 1 else if (a.y == b.y && a.x > b.x) 1 else -1 })
-            .plus(eraseListGarbage.sortBy(Comparator { a, b -> if(a.y > b.y) 1 else if (a.y == b.y && a.x > b.x) 1 else -1 }))
+    val order = eraseList.sortedWith(Comparator { a, b -> if(a.y < b.y) 1 else if (a.y == b.y && a.x > b.x) 1 else -1 })
+            .plus(eraseListGarbage.sortedWith(Comparator { a, b -> if(a.y > b.y) 1 else if (a.y == b.y && a.x > b.x) 1 else -1 }))
     spriteEraseList.add(SpriteEraseBlock(order, logic.initEraseTime, logic.eraseTimePerBlock, 40))
 
     val viewChain = if(chain && logic.chain >= 2) logic.chain else null
-    val viewCombo = if(eraseList.size() >= 4) eraseList.size() else null
+    val viewCombo = if(eraseList.size >= 4) eraseList.size else null
     if(viewChain != null || viewCombo != null) {
       val topLeft = order.get(0)
       spriteChainComboSmallList.add(SpriteChainComboSmall(this, topLeft.x, topLeft.y, viewChain, viewCombo, 40, 60))
@@ -165,7 +166,7 @@ public class Renderer(val res: SystemResource): EventHandler {
     res.getImage(Res.Img.eraseEffect40).draw(dx - 39f, dy - 39f, dx + 79f, dy + 79f, srcX, srcY, srcX + 118f, srcY + 118f)
   }
 
-  val cursorColor = array(Color(1f, 0f, 0f), Color(1f, 1f, 0f))
+  val cursorColor = arrayOf(Color(1f, 0f, 0f), Color(1f, 1f, 0f))
 
   fun drawCursor(g: Graphics, dx: Int, dy: Int, size: Int) {
     g.setColor(cursorColor[timer % 2])

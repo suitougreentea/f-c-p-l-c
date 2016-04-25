@@ -4,8 +4,8 @@ import java.io.File
 import org.newdawn.slick.Image
 import org.newdawn.slick.Color
 import java.util.HashMap
-import kotlin.dom.get
-import kotlin.dom.parseXml
+import kotlinx.dom.get
+import kotlinx.dom.parseXml
 
 class AngelCodeFontXML (fntPath: String){
   val fntFile = File(fntPath)
@@ -96,12 +96,12 @@ class AngelCodeFontXML (fntPath: String){
   fun measureStringFormatted(str: String): Int {
     var cx = 0
     var i = 0
-    while(i < str.length()){
-      var c = str.charAt(i)
+    while(i < str.length){
+      var c = str[i]
       if(c == '@'){
-        when(str.charAt(i + 1)) {
+        when(str[i + 1]) {
           '#' -> {
-            if(str.charAt(i + 8) == '#') {
+            if(str[i + 8] == '#') {
               i += 9
             } else {
               i += 11
@@ -124,12 +124,12 @@ class AngelCodeFontXML (fntPath: String){
     var cx = 0
     var cc = startColor
     var i = 0
-    while(i < str.length()){
-      var c = str.charAt(i)
+    while(i < str.length){
+      var c = str[i]
       if(c == '@'){
-        when(str.charAt(i + 1)) {
+        when(str[i + 1]) {
           '#' -> {
-            if(str.charAt(i + 8) == '#') {
+            if(str[i + 8] == '#') {
               cc = Color(
                 Integer.parseInt(str.substring(i + 2, i + 4), 16) / 255f,
                 Integer.parseInt(str.substring(i + 4, i + 6), 16) / 255f,
@@ -176,7 +176,7 @@ class Glyph(val x: Int, val y: Int, val width: Int, val height: Int, val xoffset
 }
 
 enum class TextAlign {
-  LEFT
-  CENTER
-  RIGHT
+  LEFT,
+  CENTER,
+  RIGHT,
 }

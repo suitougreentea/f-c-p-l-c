@@ -11,7 +11,7 @@ import java.util.ArrayList
 import java.util.HashSet
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
-class StatePlay(val id: Int, val resource: SystemResource) : BasicGameState() {
+class StatePlay(val id: Int, val resource: Res) : BasicGameState() {
   var player1: Player? = null
   override fun init(container: GameContainer, game: StateBasedGame) {
   }

@@ -5,39 +5,39 @@ import org.newdawn.slick.Image
 
 class SystemResource {
   enum class Img(val path: String) {
-    background: Img("background.png")
-    block40: Img("block-40.png")
-    garbage40: Img("garbage-40.png")
-    eraseBlur40: Img("eraseblur-40.png")
-    eraseEffect40: Img("eraseeffect-40.png")
-    chain: Img("chain.png")
+    background("background.png"),
+    block40("block-40.png"),
+    garbage40("garbage-40.png"),
+    eraseBlur40("eraseblur-40.png"),
+    eraseEffect40("eraseeffect-40.png"),
+    chain("chain.png"),
   }
-  private val _img: Array<Image?> = Array(Img.values().size(), {null})
+  private val _img: Array<Image?> = Array(Img.values().size, {null})
   fun getImage(img: Img): Image {
-    val result = _img[img.ordinal()]
+    val result = _img[img.ordinal]
     if(result != null) return result
     else throw IllegalStateException()
   }
 
   enum class Fnt(val path: String) {
-    jp: Fnt("font/jpfont16.fnt")
+    jp("font/jpfont16.fnt"),
   }
-  private val _fnt: Array<AngelCodeFontXML?> = Array(Fnt.values().size(), {null})
+  private val _fnt: Array<AngelCodeFontXML?> = Array(Fnt.values().size, {null})
   fun getFont(fnt: Fnt): AngelCodeFontXML {
-    val result = _fnt[fnt.ordinal()]
+    val result = _fnt[fnt.ordinal]
     if(result != null) return result
     else throw IllegalStateException()
   }
 
   fun loadImages() {
     for(e in Img.values()) {
-      _img[e.ordinal()] = loadImage(e.path)
+      _img[e.ordinal] = loadImage(e.path)
     }
   }
 
   fun loadFonts() {
     for(e in Fnt.values()) {
-      _fnt[e.ordinal()] = loadFont(e.path)
+      _fnt[e.ordinal] = loadFont(e.path)
     }
   }
 

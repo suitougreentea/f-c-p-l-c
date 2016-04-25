@@ -5,7 +5,7 @@ import org.newdawn.slick.Graphics
 import org.newdawn.slick.Image
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
-trait Sprite {
+interface Sprite {
   var timer: Int
   fun increaseTimer(){
     timer++
@@ -19,7 +19,7 @@ trait Sprite {
 // 描画はフィールド左上隅基準
 class SpriteEraseBlock(val order: List<EraseList>, val initEraseSpeed: Int, val eraseSpeedPerBlock: Int, val size: Int): Sprite {
   override var timer = 1
-  val timerMax = initEraseSpeed + order.size() * eraseSpeedPerBlock
+  val timerMax = initEraseSpeed + order.size * eraseSpeedPerBlock
 
   override fun render(r: Renderer, g: Graphics, logic: GameLogic) {
     // ブラーと点滅
@@ -106,9 +106,9 @@ class SpriteSwap(val x: Int, val y: Long, val left: Block?, val right: Block?, v
 
 class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val chain: Int?, val combo: Int?, val size: Int, val timerMax: Int): Sprite {
   override var timer = 1
-  val chainColor = array(Color(0f, 0.75f, 1f, 0.6f), Color(0f, 0.75f, 1f, 0.2f))
-  val comboColor = array(Color(1f, 0.7f, 0f, 0.6f), Color(1f, 0.7f, 0f, 0.2f))
-  val foregroundColor = array(Color(1f, 1f, 1f, 1f), Color(1f, 1f, 1f, 0.7f))
+  val chainColor = arrayOf(Color(0f, 0.75f, 1f, 0.6f), Color(0f, 0.75f, 1f, 0.2f))
+  val comboColor = arrayOf(Color(1f, 0.7f, 0f, 0.6f), Color(1f, 0.7f, 0f, 0.2f))
+  val foregroundColor = arrayOf(Color(1f, 1f, 1f, 1f), Color(1f, 1f, 1f, 0.7f))
 
   override fun render(r: Renderer, g: Graphics, logic: GameLogic) {
     val ic = renderer.res.getImage(Res.Img.chain)
@@ -120,7 +120,7 @@ class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val
       ic.draw(dx.toFloat(), chaindy.toFloat(), dx + 14f, chaindy + 24f, 985f, 408f, 985f + 14f, 408f + 24f, foregroundColor[timer % 2])
       val chainStr = chain.toString()
       for (i in chainStr.indices) {
-        val c = chainStr[i]
+        val c = chainStr[i].toInt()
         drawNum(dx + (i + 1) * 14, chaindy, c - 48, true, chainColor[timer % 2])
         drawNum(dx + (i + 1) * 14, chaindy, c - 48, false, foregroundColor[timer % 2])
       }
@@ -130,7 +130,7 @@ class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val
       ic.draw(dx.toFloat(), combody.toFloat(), dx + 14f, combody + 24f, 969f, 408f, 969f + 14f, 408f + 24f, foregroundColor[timer % 2])
       val comboStr = combo.toString()
       for (i in comboStr.indices) {
-        val c = comboStr[i]
+        val c = comboStr[i].toInt()
         drawNum(dx + (i + 1) * 14, combody, 48, true, comboColor[timer % 2])
         drawNum(dx + (i + 1) * 14, combody, c - 48, false, foregroundColor[timer % 2])
       }

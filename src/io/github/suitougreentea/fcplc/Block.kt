@@ -1,6 +1,6 @@
 package io.github.suitougreentea.fcplc
 
-open data class Block(var y: Long, val color: Int) {
+open class Block(var y: Long, val color: Int) {
   // -4 -> おじゃま消去中
   // -3 -> おじゃま消去中(最下段)
   // -2 -> 消去中

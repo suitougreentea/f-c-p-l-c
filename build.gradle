@@ -1,0 +1,43 @@
+group 'io.github.suitougreentea.fcplc'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'idea'
+
+buildscript {
+    ext.kotlin_version = '1.0.0'
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+apply plugin: "kotlin"
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+dependencies {
+    compile 'org.slick2d:slick2d-core:1.0.1'
+    compile "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    compile 'org.jetbrains.kotlinx:kotlinx.dom:0.0.9'
+}
+sourceSets {
+    main.java.srcDirs += 'src/'
+}
+
+task execute(type:JavaExec) {
+    main = "io.github.suitougreentea.fcplc.FcplcKt"
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs = ['-Djava.library.path=lib/native/']
+    ignoreExitValue = true
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.11'
+}

@@ -14,7 +14,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   init {
     for (iy in 0..3) {
       val next = fieldRandomizer.next()
-      for (ix in 0..5) {
+      for (ix in 0 .. width - 1) {
         field[ix].add(Block(iy.toLong() * 1000, next[ix]))
       }
     }
@@ -44,7 +44,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var next: Array<Block>
   init {
     val nextNext = fieldRandomizer.next()
-    next = Array(6, { i -> Block(-1000L, nextNext[i]) })
+    next = Array(width, { i -> Block(-1000L, nextNext[i]) })
   }
 
   var eraseState: MutableList<EraseState> = ArrayList()
@@ -60,6 +60,9 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var initVelocity = 0
   var acceralation = -30
   var maxVelocity = -300
+  /*var initVelocity = -1000
+  var acceralation = 0
+  var maxVelocity = -1000*/
 
   fun update(input: Input) {
     for(e in garbageList) {
@@ -256,7 +259,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       }
     }
     // これでyの小さい順 -> xの小さい順に処理する
-    for (bl in blockListMixed.sortBy { e -> e.block.y }) {
+    for (bl in blockListMixed.sortedBy { e -> e.block.y }) {
       val b = bl.block
       val col = field[bl.x]
       if(b.color < 256) {
@@ -317,7 +320,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
         blockListMixed.add(BlockListMixed(ix, b))
       }
     }
-    for (bl in blockListMixed.sortBy { e -> e.block.y }) {
+    for (bl in blockListMixed.sortedBy { e -> e.block.y }) {
       val b = bl.block
       val col = field[bl.x]
       if(b.color < 256) {
@@ -409,7 +412,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
             // 最下段以外のブロックを積み上げていく
             for (ix in garbage.blockList.indices) {
               val gcol = garbage.blockList[ix]
-              for (gb in gcol.filter { t -> t != garbage.lowestBlock[ix] }.sortBy { t -> t.y }) {
+              for (gb in gcol.filter { t -> t != garbage.lowestBlock[ix] }.sortedBy { t -> t.y }) {
                 gb.y = garbage.blockList[ix].filter { t -> t.y < gb.y }.maxBy { t -> t.y }!!.y + 1000
                 if (deactivate) {
                   gb.deactivate()
@@ -444,12 +447,12 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
         getHorizontalCombineLeft(horizontalCombineList, ix, b)
         getHorizontalCombineRight(horizontalCombineList, ix, b)
 
-        if (verticalCombineList.size() >= 3) verticalCombineList.forEach { e -> eraseList.add(e) }
-        if (horizontalCombineList.size() >= 3) horizontalCombineList.forEach { e -> eraseList.add(e) }
+        if (verticalCombineList.size >= 3) verticalCombineList.forEach { e -> eraseList.add(e) }
+        if (horizontalCombineList.size >= 3) horizontalCombineList.forEach { e -> eraseList.add(e) }
       }
     }
 
-    if (eraseList.size() > 0) {
+    if (eraseList.size > 0) {
       // 1つでもchain状態のブロックがあったら連鎖になる
       for (e in eraseList) {
         getGarbageCombine(eraseListGarbage, e.x, e.y)
@@ -482,8 +485,8 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
       // 本家は10個までしか保持できないらしいよ
       eraseState.add(EraseState(eraseList, eraseListGarbage, chain,
-              initEraseTime + eraseTimePerBlock * eraseList.size(),
-              initEraseTime + eraseTimePerBlock * (eraseList.size() + eraseListGarbage.filter {e -> GameUtil.isInField(e.y, height, lowestY)}.size()) + garbageAfterSpeed))
+              initEraseTime + eraseTimePerBlock * eraseList.size,
+              initEraseTime + eraseTimePerBlock * (eraseList.size + eraseListGarbage.filter {e -> GameUtil.isInField(e.y, height, lowestY)}.size) + garbageAfterSpeed))
       // 連鎖継続、あるいは1連鎖目の場合カウンターを上げる
       if (chain || this.chain == 0) this.chain++
       event.erase(this, chain, eraseList, eraseListGarbage)
@@ -507,7 +510,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     if ((swapLeftBlock != null && swapLeftBlock!!.chain) || (swapRightBlock != null) && swapRightBlock!!.chain) remainChain = true
 
     if (!remainChain) {
-      if (eraseState.size() > 0) {
+      if (eraseState.size > 0) {
         chain = 1
       } else {
         chain = 0
@@ -587,7 +590,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   fun dropTestBlock() {
     for (iy in 0..2) {
       for (ix in field.indices) {
-        val n = (Math.random() * 6).toInt()
+        val n = (Math.random() * (numColor + 1)).toInt()
         if(n != 0) field[ix].add(Block(10000 + iy * 1000L, n))
       }
     }

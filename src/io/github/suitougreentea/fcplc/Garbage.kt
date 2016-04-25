@@ -1,7 +1,7 @@
 package io.github.suitougreentea.fcplc
 
 public class Garbage(val id: Int, val width: Int, val height: Int, val blockList: Array<MutableList<BlockGarbage>>) {
-  val lowestBlock: Array<BlockGarbage?> = Array(blockList.size(), { i -> blockList[i].minBy { e -> e.y } })
+  val lowestBlock: Array<BlockGarbage?> = Array(blockList.size, { i -> blockList[i].minBy { e -> e.y } })
   // 左下隅のブロックをベースとする
   val baseBlock: BlockGarbage
   val baseBlockX: Int

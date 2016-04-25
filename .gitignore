@@ -1,4 +1,5 @@
-out/
+.gradle
+build/
 lib/
 *.bmfc
 .idea/

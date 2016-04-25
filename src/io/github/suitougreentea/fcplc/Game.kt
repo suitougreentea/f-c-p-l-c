@@ -19,7 +19,7 @@ class Game(val name: String): StateBasedGame(name) {
         val TEST_RENDER = 2
     }
 
-    val resource = SystemResource()
+    val resource = Res()
 
     override fun initStatesList(container: GameContainer) {
         this.addState(StateLoading(States.LOADING, resource))

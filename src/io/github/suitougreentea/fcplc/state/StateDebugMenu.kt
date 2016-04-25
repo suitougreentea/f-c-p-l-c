@@ -10,15 +10,15 @@ import org.newdawn.slick.state.StateBasedGame
 
 class StateDebugMenu(val id: Int): BasicGameState() {
   var cursor = 0
-  val items = array("Play", "Render")
+  val items = arrayOf("Play", "Render")
 
   override fun init(container: GameContainer, game: StateBasedGame) {
   }
 
   override fun update(container: GameContainer, game: StateBasedGame, delta: Int) {
     val input = container.getInput()
-    if(input.isKeyPressed(Input.KEY_UP)) cursor = (cursor + items.size() - 1) % items.size()
-    if(input.isKeyPressed(Input.KEY_DOWN)) cursor = (cursor + 1) % items.size()
+    if(input.isKeyPressed(Input.KEY_UP)) cursor = (cursor + items.size - 1) % items.size
+    if(input.isKeyPressed(Input.KEY_DOWN)) cursor = (cursor + 1) % items.size
     if(input.isKeyPressed(Input.KEY_ENTER)) {
       game.enterState(when(cursor){
         0 -> Game.States.PLAY
