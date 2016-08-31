@@ -116,6 +116,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     if (input.isKeyPressed(Input.KEY_E)) generateGarbage(1, 10000L, 5, 1)
     if (input.isKeyPressed(Input.KEY_4)) generateGarbage(0, 10000L, 6, 1)
     if (input.isKeyPressed(Input.KEY_5)) generateGarbage(0, 10000L, 6, 5)
+    if (input.isKeyPressed(Input.KEY_6)) generateGarbage(0, 10000L, 6, 30)
     if (input.isKeyPressed(Input.KEY_LSHIFT)) dropTestBlock()
 
     updateColumnState()
@@ -333,7 +334,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   }
 
   fun automaticManualRise() {
-    nextManualRiseTarget?.let { rise(Math.min(manualRiseSpeed, (lowestY - it).toInt())) }
+    nextManualRiseTarget?.let { if(lowestY - it > 0) rise(Math.min(manualRiseSpeed, (lowestY - it).toInt())) }
     if(lowestY == nextManualRiseTarget) nextManualRiseTarget = null
   }
 
