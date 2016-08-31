@@ -19,6 +19,10 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       }
     }
   }
+  // 0: 通常, 1: ピンチ, 2: 天井
+  var columnState: List<Int> = field.map { 0 }
+  var pinchTimer = 0
+  var pinchTimerMax = 20
 
   var garbageList: MutableList<Garbage> = ArrayList()
   var lastGarbageId = 0
@@ -38,6 +42,9 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var lowestY = 0L
 
   var stayTimerMax = 15
+  //var stayTimerMax = 5
+
+  var landedTimerMax = 6
 
   var chain = 0
 
@@ -55,20 +62,45 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var initEraseTime = 80
   var eraseTimePerBlock = 15
 
+  //var initEraseTime = 40
+  //var eraseTimePerBlock = 5
+
   var garbageAfterSpeed = 40
+  //var garbageAfterSpeed = 0
 
   var initVelocity = 0
   var acceralation = -30
   var maxVelocity = -300
-  /*var initVelocity = -1000
-  var acceralation = 0
-  var maxVelocity = -1000*/
+  //var initVelocity = -1000
+  //var acceralation = 0
+  //var maxVelocity = -1000
+
+  var nextManualRiseTarget: Long? = null
+
+  var gameOver = false
+  var gameOverTimer = 0
+  var gameOverTimerMax = 60
+  var stopTimer = 0
 
   fun update(input: Input) {
     for(e in garbageList) {
       e.doneCurrentFrameActivation = false
       e.doneCurrentFrameDrop = false
     }
+
+    if(gameOver) {
+      if(gameOverTimer == gameOverTimerMax) {
+
+      } else {
+        gameOverTimer ++
+      }
+      return
+    }
+
+    if(judgeGameOver()) {
+      return
+    }
+
     if (input.isKeyPressed(Input.KEY_LEFT) && cursorX >= 1) cursorX--
     if (input.isKeyPressed(Input.KEY_RIGHT) && cursorX <= width - 3) cursorX++
     if (input.isKeyPressed(Input.KEY_DOWN) && cursorY >= floorY / 1000 + 1) cursorY--
@@ -86,12 +118,16 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     if (input.isKeyPressed(Input.KEY_5)) generateGarbage(0, 10000L, 6, 5)
     if (input.isKeyPressed(Input.KEY_LSHIFT)) dropTestBlock()
 
+    updateColumnState()
+    updatePinchTimer()
     automaticRise()
     if (input.isKeyDown(Input.KEY_ENTER)) manualRise()
+    automaticManualRise()
 
     if (input.isKeyPressed(Input.KEY_SPACE)) swap()
     countSwap()
 
+    updateLandedTimer()
     activateBlock()
     dropBlock()
     eraseBlock()
@@ -108,6 +144,9 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
     // swap可能か判定
     fun isSwappable(): Boolean {
+      val swapX = this.swapX
+      val swapY = this.swapY
+
       // 空
       if (leftBlock == null && rightBlock == null) return false
       // 消去中のブロックがある
@@ -115,40 +154,43 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       // おじゃまがある
       if ((leftBlock != null && leftBlock.color >= 256) || (rightBlock != null && rightBlock.color >= 256)) return false
       // どちらもswap中
-      else if (cursorX == swapX && cursorY == swapY) return false
+      if (cursorX == swapX && cursorY == swapY) return false
       // どちらもactive
-      else if ((leftBlock != null && leftBlock.active) && (rightBlock != null && rightBlock.active)) return false
+      if ((leftBlock != null && leftBlock.active) && (rightBlock != null && rightBlock.active)) return false
       // どちらかdisable
-      else if ((leftBlock != null && leftBlock.disabled) || (rightBlock != null && rightBlock.disabled)) return false
+      if ((leftBlock != null && leftBlock.disabled) || (rightBlock != null && rightBlock.disabled)) return false
       // 滞空期間中のブロックはフリップできない
-      else if (leftBlock != null && 0 < leftBlock.stayTimer && leftBlock.stayTimer < stayTimerMax) return false
-      else if (rightBlock != null && 0 < rightBlock.stayTimer && rightBlock.stayTimer < stayTimerMax) return false
+      if (leftBlock != null && 0 < leftBlock.stayTimer && leftBlock.stayTimer < stayTimerMax) return false
+      if (rightBlock != null && 0 < rightBlock.stayTimer && rightBlock.stayTimer < stayTimerMax) return false
       // 滞空期間中のブロックの下部はフリップできない(上部のブロックが滞空中だったらfalse)
-      else if (field[cursorX].firstOrNull { e -> e.y == cursorY * 1000L + 1000 && 0 < e.stayTimer && e.stayTimer < stayTimerMax } != null) return false
-      else if (field[cursorX + 1].firstOrNull { e -> e.y == cursorY * 1000L + 1000 && 0 < e.stayTimer && e.stayTimer < stayTimerMax } != null) return false
-      // 片方nullのswapで、nullじゃない側(swap後にnullになる側)の上部に静止したブロックがある場合
-      //  　[]        []
-      // {  []}] -> -{--[]}  : Left == null, Right != null, カーソル == swap + 1 (カーソルを右に1つ移動したときのみ起こる), 上部ブロックあり
-      else if (swapLeftBlock == null && swapRightBlock != null && cursorX == swapX!! + 1 && field[cursorX].firstOrNull { e -> e.y == cursorY * 1000L + 1000 } != null) return false
-      //   []           []
-      // [{[]  } ->  {[]--}- : Left != null, Right == null, カーソル == swap - 1 (カーソルを左に1つ移動したときのみ起こる), 上部ブロックあり
-      else if (swapLeftBlock != null && swapRightBlock == null && cursorX == swapX!! - 1 && field[cursorX + 1].firstOrNull { e -> e.y == cursorY * 1000L + 1000 } != null) return false
-      // swap"後が"どちらもnullになる場合
-      // [{  []} ->  []-{--  }
-      //else if (swapLeftBlock == null && swapRightBlock != null && cursorX == swapX!! + 1 && rightBlock == null) return false
-      // {[]  }] -> {  --}-[]
-      //else if (swapLeftBlock != null && swapRightBlock == null && cursorX == swapX!! - 1 && leftBlock == null) return false
-      //  // inactiveかつ下に空洞(1フレームだけある、いいのかな？)
-      // else if(left != null && !left.active && field[cursorX].firstOrNull {e -> e.y == left.y - 1000} == null) return false
-      // else if(right != null && !right.active && field[cursorX + 1].firstOrNull {e -> e.y == right.y - 1000} == null) return false
-      // swap後のブロックの下に空洞がある場合
-      // {  []}    {  --}-
-      //    []  ->      []
-      else if (swapLeftBlock == null && swapRightBlock != null && cursorX == swapX!! - 1 && field[cursorX + 1].firstOrNull { e -> e.y == cursorY * 1000L - 1000 } == null) return false
-      // {[]  }    -{--  }
-      //  []    -> []
-      else if (swapLeftBlock != null && swapRightBlock == null && cursorX == swapX!! + 1 && field[cursorX].firstOrNull { e -> e.y == cursorY * 1000L - 1000 } == null) return false
-      else return true
+      if (field[cursorX].firstOrNull { e -> e.y == cursorY * 1000L + 1000 && 0 < e.stayTimer && e.stayTimer < stayTimerMax } != null) return false
+      if (field[cursorX + 1].firstOrNull { e -> e.y == cursorY * 1000L + 1000 && 0 < e.stayTimer && e.stayTimer < stayTimerMax } != null) return false
+      if(swapX != null && swapY != null) {
+        // 片方nullのswapで、nullじゃない側(swap後にnullになる側)の上部に静止したブロックがある場合
+        //  　[]        []
+        // {  []}] -> -{--[]}  : Left == null, Right != null, カーソル == swap + 1 (カーソルを右に1つ移動したときのみ起こる), 上部ブロックあり
+        if (swapLeftBlock == null && swapRightBlock != null && cursorX == swapX + 1 && field[cursorX].firstOrNull { e -> e.y == cursorY * 1000L + 1000 } != null) return false
+        //   []           []
+        // [{[]  } ->  {[]--}- : Left != null, Right == null, カーソル == swap - 1 (カーソルを左に1つ移動したときのみ起こる), 上部ブロックあり
+        if (swapLeftBlock != null && swapRightBlock == null && cursorX == swapX - 1 && field[cursorX + 1].firstOrNull { e -> e.y == cursorY * 1000L + 1000 } != null) return false
+        // // swap"後が"どちらもnullになる場合
+        // [{  []} ->  []-{--  }
+        // else if (swapLeftBlock == null && swapRightBlock != null && cursorX == swapX + 1 && rightBlock == null) return false
+        // {[]  }] -> {  --}-[]
+        // else if (swapLeftBlock != null && swapRightBlock == null && cursorX == swapX - 1 && leftBlock == null) return false
+        // // inactiveかつ下に空洞(1フレームだけある、いいのかな？)
+        // else if(left != null && !left.active && field[cursorX].firstOrNull {e -> e.y == left.y - 1000} == null) return false
+        // else if(right != null && !right.active && field[cursorX + 1].firstOrNull {e -> e.y == right.y - 1000} == null) return false
+
+        // swap後のブロックの下に空洞がある場合
+        // {  []}    {  --}-
+        //    []  ->      []
+        if (swapLeftBlock == null && swapRightBlock != null && cursorX == swapX - 1 && field[cursorX + 1].firstOrNull { e -> e.y == cursorY * 1000L - 1000 } == null) return false
+        // {[]  }    -{--  }
+        //  []    -> []
+        if (swapLeftBlock != null && swapRightBlock == null && cursorX == swapX + 1 && field[cursorX].firstOrNull { e -> e.y == cursorY * 1000L - 1000 } == null) return false
+      }
+      return true
     }
 
     if (isSwappable()) {
@@ -156,19 +198,19 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       // -1が実際のブロックに置き換わったので再度評価
       val newLeftBlock = field[cursorX].firstOrNull { e -> cursorY * 1000 <= e.y && e.y < cursorY * 1000 + 1000 }
       val newRightBlock = field[cursorX + 1].firstOrNull { e -> cursorY * 1000 <= e.y && e.y < cursorY * 1000 + 1000 }
-      if (newLeftBlock == null) {
+      if (newLeftBlock == null && newRightBlock != null) {
         //右のみ
         field[cursorX + 1].remove(newRightBlock)
         field[cursorX].add(Block(cursorY.toLong() * 1000, -1))
         swapLeftBlock = null
-        swapRightBlock = newRightBlock!!
-      } else if (newRightBlock == null) {
+        swapRightBlock = newRightBlock
+      } else if (newLeftBlock != null && newRightBlock == null) {
         //左のみ
         field[cursorX].remove(newLeftBlock)
         field[cursorX + 1].add(Block(cursorY.toLong() * 1000, -1))
         swapLeftBlock = newLeftBlock
         swapRightBlock = null
-      } else {
+      } else if (newLeftBlock != null && newRightBlock != null) {
         // 両方フロックがある
         field[cursorX].remove(newLeftBlock)
         field[cursorX + 1].remove(newRightBlock)
@@ -180,7 +222,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       swapX = cursorX
       swapY = cursorY
       swapTimer = 1
-      event.swap(this, swapX!!, swapY!! * 1000L, swapLeftBlock, swapRightBlock)
+      event.swap(this, cursorX, cursorY * 1000L, swapLeftBlock, swapRightBlock)
     }
   }
 
@@ -197,34 +239,69 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
   // swapを完了させる
   fun endSwap() {
+    val swapLeftBlock = this.swapLeftBlock
+    val swapRightBlock = this.swapRightBlock
+    val swapX = this.swapX
+    val swapY = this.swapY
+
     if (swapX == null || swapY == null) throw IllegalStateException()
 
     if (swapRightBlock != null) {
-      swapRightBlock!!.y = swapY!! * 1000L
-      if(swapRightBlock!!.active) {
-        val below = field[swapX!!].firstOrNull { e -> e.y == (swapY!! - 1) * 1000L}
-        swapRightBlock!!.stayTimer = if(below != null) stayTimerMax else 1
-        swapRightBlock!!.velocity = initVelocity
+      swapRightBlock.y = swapY * 1000L
+      if(swapRightBlock.active) {
+        val below = field[swapX].firstOrNull { e -> e.y == (swapY - 1) * 1000L}
+        swapRightBlock.stayTimer = if(below != null) stayTimerMax else 1
+        swapRightBlock.velocity = initVelocity
       }
-      field[swapX!!].add(swapRightBlock!!)
-      field[swapX!!].remove(field[swapX!!].first { e -> e.color == -1 })
+      field[swapX].add(swapRightBlock)
+      field[swapX].remove(field[swapX].first { e -> e.color == -1 })
     }
     if (swapLeftBlock != null) {
-      swapLeftBlock!!.y = swapY!! * 1000L
-      if(swapLeftBlock!!.active) {
-        val below = field[swapX!! + 1].firstOrNull { e -> e.y == (swapY!! - 1) * 1000L}
-        swapLeftBlock!!.stayTimer = if(below != null) stayTimerMax else 1
-        swapLeftBlock!!.velocity = initVelocity
+      swapLeftBlock.y = swapY * 1000L
+      if(swapLeftBlock.active) {
+        val below = field[swapX + 1].firstOrNull { e -> e.y == (swapY - 1) * 1000L}
+        swapLeftBlock.stayTimer = if(below != null) stayTimerMax else 1
+        swapLeftBlock.velocity = initVelocity
       }
-      field[swapX!! + 1].add(swapLeftBlock!!)
-      field[swapX!! + 1].remove(field[swapX!! + 1].first { e -> e.color == -1 })
+      field[swapX + 1].add(swapLeftBlock)
+      field[swapX + 1].remove(field[swapX + 1].first { e -> e.color == -1 })
     }
 
-    swapLeftBlock = null
-    swapRightBlock = null
-    swapX = null
-    swapY = null
+    this.swapLeftBlock = null
+    this.swapRightBlock = null
+    this.swapX = null
+    this.swapY = null
     swapTimer = 0
+  }
+
+  fun updateColumnState() {
+    columnState = field.map {
+      if((it.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 1000L) 2
+      else if((it.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 2000L) 1
+      else 0
+    }
+  }
+
+  fun updatePinchTimer() {
+    if(columnState.any { it >= 1 } && stopTimer == 0) {
+      pinchTimer ++
+      if(pinchTimer == pinchTimerMax) {
+        pinchTimer = 0
+      }
+    } else pinchTimer = 0
+  }
+
+  fun isAnyActiveBlock() = field.any { it.any { it.active } }
+  fun getTopMostY() = (field.map { it.map { it.y }.max() ?: Long.MIN_VALUE }.max() ?: Long.MIN_VALUE)
+  fun isDead() = lowestY + height * 1000L <= getTopMostY() + 1000L
+
+  fun judgeGameOver(): Boolean {
+    if(swapTimer == 0 && chain == 0 && !isAnyActiveBlock() && stopTimer == 0 && isDead()) {
+      gameOver = true
+      event.gameOver(this)
+      return true
+    }
+    return false
   }
 
   fun rise(delta: Int) {
@@ -242,11 +319,34 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
   // 自動せりあがり
   fun automaticRise() {
-    if (swapTimer == 0 && chain == 0) rise(internalSpeed)
+    //if (swapTimer == 0 && chain == 0) rise(internalSpeed)
+    if (swapTimer == 0 && chain == 0 && !isAnyActiveBlock()) {
+      if (stopTimer == 0) rise(internalSpeed)
+      else stopTimer --
+    }
   }
 
   // 手動せりあがり
-  fun manualRise() { rise(manualRiseSpeed) }
+  fun manualRise() {
+    stopTimer = 0
+    nextManualRiseTarget = Math.max(((lowestY - manualRiseSpeed) / 1000L) * 1000L - 1000L, getTopMostY() - height * 1000L + 1000L)
+  }
+
+  fun automaticManualRise() {
+    nextManualRiseTarget?.let { rise(Math.min(manualRiseSpeed, (lowestY - it).toInt())) }
+    if(lowestY == nextManualRiseTarget) nextManualRiseTarget = null
+  }
+
+  fun updateLandedTimer() {
+    field.forEach {
+      it.forEach {
+        if(it.landedTimer > 0) {
+          if(it.landedTimer == landedTimerMax) it.landedTimer = 0
+          else it.landedTimer ++
+        }
+      }
+    }
+  }
 
   // 1000下のブロックがない、あるいはactiveな場合自身のブロックをactiveにする
   fun activateBlock() {
@@ -413,7 +513,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
             for (ix in garbage.blockList.indices) {
               val gcol = garbage.blockList[ix]
               for (gb in gcol.filter { t -> t != garbage.lowestBlock[ix] }.sortedBy { t -> t.y }) {
-                gb.y = garbage.blockList[ix].filter { t -> t.y < gb.y }.maxBy { t -> t.y }!!.y + 1000
+                gb.y = garbage.blockList[ix].filter { t -> t.y < gb.y }.maxBy { t -> t.y }?.let{ it.y + 1000 } ?: throw IllegalStateException()
                 if (deactivate) {
                   gb.deactivate()
                 } else {
@@ -431,14 +531,14 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
   // 消去判定
   fun eraseBlock() {
-    var eraseList: MutableSet<EraseList> = HashSet()
-    var eraseListGarbage: MutableSet<EraseList> = HashSet()
+    val eraseList: MutableSet<EraseList> = HashSet()
+    val eraseListGarbage: MutableSet<EraseList> = HashSet()
 
     for (ix in field.indices) {
       val col = field[ix]
       for (b in col.filter { e -> e.color > 0 && e.color < 256 && !e.active && !e.disabled }) {
-        var verticalCombineList: MutableSet<EraseList> = HashSet()
-        var horizontalCombineList: MutableSet<EraseList> = HashSet()
+        val verticalCombineList: MutableSet<EraseList> = HashSet()
+        val horizontalCombineList: MutableSet<EraseList> = HashSet()
         verticalCombineList.add(EraseList(ix, b.y, b.color))
         horizontalCombineList.add(EraseList(ix, b.y, b.color))
 
@@ -489,6 +589,11 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
               initEraseTime + eraseTimePerBlock * (eraseList.size + eraseListGarbage.filter {e -> GameUtil.isInField(e.y, height, lowestY)}.size) + garbageAfterSpeed))
       // 連鎖継続、あるいは1連鎖目の場合カウンターを上げる
       if (chain || this.chain == 0) this.chain++
+
+      if(this.chain >= 2 || eraseList.size >= 4) {
+        if(columnState.any { it >= 1 }) stopTimer += 600
+        else stopTimer += 120
+      }
       event.erase(this, chain, eraseList, eraseListGarbage)
     }
   }
@@ -507,7 +612,10 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       if (e.chain) remainChain = true
     }
 
-    if ((swapLeftBlock != null && swapLeftBlock!!.chain) || (swapRightBlock != null) && swapRightBlock!!.chain) remainChain = true
+    val swapLeftBlock = this.swapLeftBlock
+    val swapRightBlock = this.swapRightBlock
+
+    if ((swapLeftBlock != null && swapLeftBlock.chain) || (swapRightBlock != null) && swapRightBlock.chain) remainChain = true
 
     if (!remainChain) {
       if (eraseState.size > 0) {

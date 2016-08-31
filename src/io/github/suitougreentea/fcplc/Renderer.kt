@@ -9,8 +9,9 @@ import java.util.ArrayList
 import java.util.Comparator
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
-public class Renderer(val res: Res): EventHandler {
-
+class Renderer(val res: Res): EventHandler {
+  val pinchAnimation = arrayOf(4, 0, 0, 2, 2, 3, 3, 2, 2, 0, 0, 4)
+  val landedAnimation = arrayOf(4, 4, 0, 2, 3, 2)
   var timer = 0
   fun increaseTimer(){
     timer++
@@ -39,24 +40,37 @@ public class Renderer(val res: Res): EventHandler {
   var spriteSwap: SpriteSwap? = null
 
   fun render(g: Graphics, logic: GameLogic) {
+    val pinchTimer = logic.pinchTimer / logic.pinchTimerMax.toFloat()
     res.getImage(Res.Img.background).draw()
 
     g.pushTransform()
-    //g.translate(280f, 92f)
-    g.translate(0f, 92f)
+    g.translate(280f, 92f)
+    //g.translate(0f, 92f)
     g.setColor(Color(0f, 0f, 0f, 0.6f))
     g.fillRect(0f, 0f, logic.width * 40f, logic.height * 40f)
     g.setWorldClip(0f, 0f, logic.width * 40f, logic.height * 40f)
-    for(ix in logic.field.indices){
+    for(ix in logic.field.indices) {
+      val bounce = if(logic.columnState[ix] == 1) ((pinchTimer * 2 - 1) * (pinchTimer * 2 - 1) - 1f) * 2f else 0f
+      g.pushTransform()
+      g.translate(0f, bounce)
       val col = logic.field[ix]
       for(b in col) {
         if(b.color > 0) {
           val dy = getFieldY(b.y, logic.height, logic.lowestY, 40)
-          drawBlock(g, ix * 40, dy, 40, b.color)
+          val state = when(logic.columnState[ix]) {
+            0 -> if(b.landedTimer > 0) {
+              landedAnimation[(((b.landedTimer - 1) / logic.landedTimerMax.toFloat()) * landedAnimation.size).toInt()]
+            } else 0
+            1 -> pinchAnimation[(pinchTimer * pinchAnimation.size).toInt()]
+            2 -> 4
+            else -> throw IllegalStateException()
+          }
+          drawBlock(g, ix * 40, dy, 40, b.color, state)
           //if(b.active) res.getFont(Res.Fnt.jp).drawString("A", ix * 40, dy)
           ///*if(b.active)*/ res.getFont(Res.Fnt.jp).drawString(b.stayTimer.toString(), ix * 40, dy + 20)
         }
       }
+      g.popTransform()
       val dy = getFieldY(logic.next[ix].y, logic.height, logic.lowestY, 40)
       drawBlock(g, ix * 40, dy, 40, logic.next[ix].color, 1)
     }
@@ -71,10 +85,13 @@ public class Renderer(val res: Res): EventHandler {
     for(e in spriteChainComboSmallList) {
       e.render(this, g, logic)
     }
+    /*logic.pinch.forEachIndexed { i, p ->
+      if(p) res.getFont(Res.Fnt.jp).drawString("P", i * 40, 0)
+    }*/
     g.clearWorldClip()
     drawCursor(g, logic.cursorX * 40, getFieldY(logic.cursorY * 1000L, logic.height, logic.lowestY, 40), 40)
     g.popTransform()
-
+    res.getFont(Res.Fnt.jp).drawString(logic.stopTimer.toString(), 10, 10)
   }
 
   override fun erase(logic: GameLogic, chain: Boolean, eraseList: Set<EraseList>, eraseListGarbage: Set<EraseList>) {
@@ -86,13 +103,16 @@ public class Renderer(val res: Res): EventHandler {
     val viewCombo = if(eraseList.size >= 4) eraseList.size else null
     if(viewChain != null || viewCombo != null) {
       val topLeft = order.get(0)
-      spriteChainComboSmallList.add(SpriteChainComboSmall(this, topLeft.x, topLeft.y, viewChain, viewCombo, 40, 60))
+      val stop = logic.columnState.any { it >= 1 }
+      spriteChainComboSmallList.add(SpriteChainComboSmall(this, topLeft.x, topLeft.y, viewChain, viewCombo, stop, 40, 60))
     }
   }
 
   override fun swap(logic: GameLogic, x: Int, y: Long, left: Block?, right: Block?) {
     spriteSwap = SpriteSwap(x, y, left, right, 40, logic.swapTimerMax)
   }
+
+  override fun gameOver(logic: GameLogic) {}
 
   // フィールド左上隅からのY座標を取得
   fun getFieldY(y: Long, fieldHeight: Int, lowestY: Long, size: Int): Int {
@@ -169,8 +189,7 @@ public class Renderer(val res: Res): EventHandler {
   val cursorColor = arrayOf(Color(1f, 0f, 0f), Color(1f, 1f, 0f))
 
   fun drawCursor(g: Graphics, dx: Int, dy: Int, size: Int) {
-    g.setColor(cursorColor[timer % 2])
-    g.setLineWidth(2f)
-    g.drawRect(dx.toFloat(), dy.toFloat(), 80f, 40f)
+    val a = (timer % 60) / 30
+    res.getImage(Res.Img.cursor).draw(dx - 8f, dy - 8f, dx - 8f + 96f, dy - 8f + 56f, a * 97f, 0f, a * 97f + 96f, 56f)
   }
 }

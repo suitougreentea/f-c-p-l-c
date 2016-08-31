@@ -104,10 +104,11 @@ class SpriteSwap(val x: Int, val y: Long, val left: Block?, val right: Block?, v
     get() { return timer >= timerMax }
 }
 
-class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val chain: Int?, val combo: Int?, val size: Int, val timerMax: Int): Sprite {
+class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val chain: Int?, val combo: Int?, val stop: Boolean, val size: Int, val timerMax: Int): Sprite {
   override var timer = 1
   val chainColor = arrayOf(Color(0f, 0.75f, 1f, 0.6f), Color(0f, 0.75f, 1f, 0.2f))
   val comboColor = arrayOf(Color(1f, 0.7f, 0f, 0.6f), Color(1f, 0.7f, 0f, 0.2f))
+  val stopColor = arrayOf(Color(1f, 0f, 0f, 0.6f), Color(1f, 0f, 0f, 0.2f))
   val foregroundColor = arrayOf(Color(1f, 1f, 1f, 1f), Color(1f, 1f, 1f, 0.7f))
 
   override fun render(r: Renderer, g: Graphics, logic: GameLogic) {
@@ -115,6 +116,7 @@ class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val
     val dx = x * size
     val chaindy = r.getFieldY(y, logic.height, logic.lowestY, size)
     val combody = r.getFieldY(y, logic.height, logic.lowestY, size) + if(chain != null) 24 else 0
+    val stopdy = r.getFieldY(y, logic.height, logic.lowestY, size) + if(chain != null) 24 else 0 + if(combo != null) 24 else 0
     if(chain != null) {
       ic.draw(dx.toFloat(), chaindy.toFloat(), dx + 14f, chaindy + 24f, 985f, 920f, 985f + 14f, 920f + 24f, chainColor[timer % 2])
       ic.draw(dx.toFloat(), chaindy.toFloat(), dx + 14f, chaindy + 24f, 985f, 408f, 985f + 14f, 408f + 24f, foregroundColor[timer % 2])
@@ -134,6 +136,10 @@ class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val
         drawNum(dx + (i + 1) * 14, combody, 48, true, comboColor[timer % 2])
         drawNum(dx + (i + 1) * 14, combody, c - 48, false, foregroundColor[timer % 2])
       }
+    }
+    if(stop) {
+      ic.draw(dx.toFloat(), stopdy.toFloat(), dx + 58f, stopdy + 24f, 808f, 952f, 808f + 58f, 952f + 24f, stopColor[timer % 2])
+      ic.draw(dx.toFloat(), stopdy.toFloat(), dx + 58f, stopdy + 24f, 808f, 440f, 808f + 58f, 440f + 24f, foregroundColor[timer % 2])
     }
   }
 

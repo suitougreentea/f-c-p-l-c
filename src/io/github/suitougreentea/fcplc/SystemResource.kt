@@ -11,6 +11,7 @@ class SystemResource {
     eraseBlur40("eraseblur-40.png"),
     eraseEffect40("eraseeffect-40.png"),
     chain("chain.png"),
+    cursor("cursor.png"),
   }
   private val _img: Array<Image?> = Array(Img.values().size, {null})
   fun getImage(img: Img): Image {

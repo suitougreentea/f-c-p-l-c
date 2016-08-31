@@ -11,6 +11,7 @@ open class Block(var y: Long, val color: Int) {
   var chain = false
   var active = false
   var disabled = false
+  var landedTimer = 0
 
   fun activate(initVelocity: Int = 0) {
     active = true
@@ -22,6 +23,7 @@ open class Block(var y: Long, val color: Int) {
     active = false
     stayTimer = 0
     velocity = 0
+    landedTimer = 1
   }
 }
 

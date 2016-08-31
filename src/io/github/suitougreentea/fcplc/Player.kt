@@ -24,5 +24,9 @@ class Player(val resource: SystemResource): EventHandler {
   override fun swap(logic: GameLogic, x: Int, y: Long, left: Block?, right: Block?) {
     renderer.swap(logic, x, y, left, right)
   }
+
+  override fun gameOver(logic: GameLogic) {
+    println("gameover")
+  }
 }
 
