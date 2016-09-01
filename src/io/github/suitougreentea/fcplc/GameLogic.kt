@@ -41,8 +41,8 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var floorY = 0L
   var lowestY = 0L
 
-  var stayTimerMax = 15
-  //var stayTimerMax = 5
+  //var stayTimerMax = 15
+  var stayTimerMax = 5
 
   var landedTimerMax = 6
 
@@ -60,17 +60,18 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
   var eraseState: MutableList<EraseState> = ArrayList()
 
+  //var internalSpeed = 1
   var internalSpeed = 1
   var manualRiseSpeed = 1000 / 15
 
-  var initEraseTime = 80
-  var eraseTimePerBlock = 15
+  //var initEraseTime = 80
+  //var eraseTimePerBlock = 15
 
-  //var initEraseTime = 40
-  //var eraseTimePerBlock = 5
+  var initEraseTime = 40
+  var eraseTimePerBlock = 5
 
-  var garbageAfterSpeed = 40
-  //var garbageAfterSpeed = 0
+  //var garbageAfterSpeed = 40
+  var garbageAfterSpeed = 10
 
   //var initVelocity = 0
   //var acceralation = -30
@@ -85,6 +86,18 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var gameOverTimer = 0
   var gameOverTimerMax = 60
   var stopTimer = 0
+
+  var garbageQueue: MutableList<GarbageQueue> = ArrayList()
+  var garbageQueueTimerMax = 60
+  var attackQueue: MutableList<AttackQueue> = ArrayList()
+  var attackQueueTimerMax = 30
+
+  var garbageStopTimer = 0
+  var garbageStopTimerIncrement = 60
+  var normalStopIncrement = 0
+  var pinchStopIncrement = 0
+  var garbageExtraStop = 0 // TODO: 初めてのやつだけ
+  var stopTimerLimit = 1200
 
   fun update(controller: Controller) {
     for(e in garbageList) {
@@ -114,6 +127,8 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     if (controller.isPressed(Controller.Button.UP))    verticalMovePressed(1)
     if (controller.isDown   (Controller.Button.UP))    verticalMoveDown(1)
 
+    updateAttackQueue()
+    dropAllGarbage()
     updateColumnState()
     updatePinchTimer()
     automaticRise()
@@ -131,6 +146,12 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     remainChain()
 
     countErase()
+  }
+
+  fun updateAttackQueue() {
+    attackQueue.forEach { it.timer ++ }
+    attackQueue.filter { it.timer >= attackQueueTimerMax }.forEach { event.attack(it.chain, it.combo) }
+    attackQueue.removeAll { it.timer >= attackQueueTimerMax }
   }
 
   fun horizontalMovePressed(direction: Int) {
@@ -295,6 +316,19 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     swapTimer = 0
   }
 
+  fun dropAllGarbage() {
+    //if (swapTimer == 0 && chain == 0 && !isAnyActiveBlock()) {
+      garbageQueue.filter { it.done }.forEach { it.timer++ }
+      while(garbageQueue.size >= 1 && garbageQueue[0].done && garbageQueue[0].timer >= garbageQueueTimerMax) {
+        val queue = garbageQueue.removeAt(0)
+        if(queue.chainSize > 0) dropGarbage(0, width, queue.chainSize)
+        queue.other.forEach {
+          dropGarbage((Math.random() * (width - it + 1)).toInt(), it, 1)
+        }
+      }
+    //}
+  }
+
   fun updateColumnState() {
     columnState = field.map {
       if((it.filter { !it.active }.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 1000L) 2
@@ -304,7 +338,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   }
 
   fun updatePinchTimer() {
-    if(columnState.any { it >= 1 } && stopTimer == 0) {
+    if(columnState.any { it >= 1 } && stopTimer == 0 && garbageStopTimer == 0) {
       pinchTimer ++
       if(pinchTimer == pinchTimerMax) {
         pinchTimer = 0
@@ -317,7 +351,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   fun isDead() = lowestY + height * 1000L <= getTopMostY() + 1000L
 
   fun judgeGameOver(): Boolean {
-    if(swapTimer == 0 && chain == 0 && !isAnyActiveBlock() && stopTimer == 0 && isDead()) {
+    if(swapTimer == 0 && chain == 0 && !isAnyActiveBlock() && stopTimer == 0 && garbageStopTimer == 0 && isDead()) {
       gameOver = true
       event.gameOver(this)
       return true
@@ -343,14 +377,15 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   fun automaticRise() {
     //if (swapTimer == 0 && chain == 0) rise(internalSpeed)
     if (swapTimer == 0 && chain == 0 && !isAnyActiveBlock()) {
-      if (stopTimer == 0) rise(internalSpeed)
-      else stopTimer --
+      if (stopTimer == 0 && garbageStopTimer == 0) rise(internalSpeed)
+      else if(garbageStopTimer > 0) garbageStopTimer -- else stopTimer --
     }
   }
 
   // 手動せりあがり
   fun manualRise() {
     stopTimer = 0
+    garbageStopTimer = 0
     nextManualRiseTarget = Math.max(((lowestY - manualRiseSpeed) / 1000L) * 1000L - 1000L, getTopMostY() - height * 1000L + 1000L)
   }
 
@@ -544,6 +579,13 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
                 }
               }
             }
+            if(deactivate) {
+              garbageStopTimer = garbageStopTimerIncrement
+              if(isDead()) {
+                stopTimer += garbageExtraStop
+                if(stopTimer > stopTimerLimit) stopTimer = stopTimerLimit
+              }
+            }
           }
           garbage.doneCurrentFrameDrop = true
         }
@@ -617,10 +659,12 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       if (chain || this.chain == 0) this.chain++
 
       if(this.chain >= 2 || eraseList.size >= 4) {
-        if(columnState.any { it >= 1 }) stopTimer += 600
-        else stopTimer += 120
+        if(columnState.any { it >= 1 }) stopTimer += pinchStopIncrement
+        else stopTimer += normalStopIncrement
+        if(stopTimer > stopTimerLimit) stopTimer = stopTimerLimit
       }
       event.erase(this, chain, eraseList, eraseListGarbage)
+      if(chain || eraseList.size >= 4) attackQueue.add(AttackQueue(if(chain) this.chain else 1, eraseList.size))
     }
   }
 

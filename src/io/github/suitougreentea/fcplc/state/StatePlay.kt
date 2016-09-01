@@ -12,6 +12,24 @@ import java.util.HashSet
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
 class StatePlay(val id: Int, val resource: Res) : BasicGameState() {
+  val player1Wrapper = object: PlayerWrapper() {
+    override fun attack(chain: Int, combo: Int) {
+      if(chain >= 2) player2?.attackChain(chain)
+      if(combo >= 4) player2?.attackCombo(combo)
+    }
+    override fun endChain(chain: Int) {
+      player2?.breakAttack()
+    }
+  }
+  val player2Wrapper = object: PlayerWrapper() {
+    override fun attack(chain: Int, combo: Int) {
+      if(chain >= 2) player1?.attackChain(chain)
+      if(combo >= 4) player1?.attackCombo(combo)
+    }
+    override fun endChain(chain: Int) {
+      player1?.breakAttack()
+    }
+  }
   var player1: Player? = null
   var player2: Player? = null
 
@@ -36,8 +54,8 @@ class StatePlay(val id: Int, val resource: Res) : BasicGameState() {
   }
 
   override fun enter(container: GameContainer, game: StateBasedGame) {
-    player1 = Player(resource, 0, 0, 2)
-    player2 = Player(resource, 0, 1, 2)
+    player1 = Player(player1Wrapper, resource, 0, 0, 2)
+    player2 = Player(player2Wrapper, resource, 0, 1, 2)
   }
 
   override fun update(container: GameContainer, game: StateBasedGame, delta: Int) {
@@ -53,8 +71,25 @@ class StatePlay(val id: Int, val resource: Res) : BasicGameState() {
   override fun render(container: GameContainer, game: StateBasedGame, g: Graphics) {
     resource.getImage(Res.Img.background).draw()
     player1?.render(g)
-    //player2?.render(g)
+    player2?.render(g)
   }
 
   override fun getID() = id
+}
+
+open class PlayerWrapper: EventHandler {
+  override fun attack(chain: Int, combo: Int) {
+  }
+
+  override fun erase(logic: GameLogic, chain: Boolean, eraseList: Set<EraseList>, eraseListGarbage: Set<EraseList>) {
+  }
+
+  override fun swap(logic: GameLogic, x: Int, y: Long, left: Block?, right: Block?) {
+  }
+
+  override fun gameOver(logic: GameLogic) {
+  }
+
+  override fun endChain(chain: Int) {
+  }
 }

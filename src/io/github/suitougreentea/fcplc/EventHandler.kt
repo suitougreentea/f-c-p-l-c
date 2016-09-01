@@ -5,4 +5,5 @@ public interface EventHandler {
   fun swap(logic: GameLogic, x: Int, y: Long, left: Block?, right: Block?)
   fun gameOver(logic: GameLogic)
   fun endChain(chain: Int)
+  fun attack(chain: Int, combo: Int)
 }

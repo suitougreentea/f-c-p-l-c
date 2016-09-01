@@ -10,7 +10,7 @@ import java.util.Comparator
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
 class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int): EventHandler {
-  val debug = true
+  val debug = false
   val pinchAnimation = arrayOf(4, 0, 0, 2, 2, 3, 3, 2, 2, 0, 0, 4)
   val landedAnimation = arrayOf(4, 4, 0, 2, 3, 2)
   val jpFont = res.getFont(Res.Fnt.jp)
@@ -115,6 +115,7 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
       |swapTimer: ${logic.swapTimer}
       |pinchTimer: ${logic.pinchTimer}
       |stopTimer: ${logic.stopTimer.toString()}
+      |garbageStopTimer: ${logic.garbageStopTimer.toString()}
       """.trimMargin(), 240, 0)
       g.lineWidth = 2f
       logic.eraseState.forEachIndexed { i, e ->
@@ -130,6 +131,9 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
 
       }
       g.lineWidth = 1f
+      jpFont.drawString(logic.garbageQueue.map {
+        "${it.chainSize}: " + it.other.joinToString(", ") + if(it.done) "!" else ""
+      }.joinToString("\n"), 240, 300)
     }
 
     for(e in spriteChainComboSmallList) {
@@ -159,6 +163,7 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
 
   override fun gameOver(logic: GameLogic) {}
   override fun endChain(chain: Int) {}
+  override fun attack(chain: Int, combo: Int) {}
 
   // フィールド左上隅からのY座標を取得
   fun getFieldY(y: Long, fieldHeight: Int, lowestY: Long, size: Int): Int {
