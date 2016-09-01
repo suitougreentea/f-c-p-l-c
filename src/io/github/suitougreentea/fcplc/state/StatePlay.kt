@@ -53,7 +53,7 @@ class StatePlay(val id: Int, val resource: Res) : BasicGameState() {
   override fun render(container: GameContainer, game: StateBasedGame, g: Graphics) {
     resource.getImage(Res.Img.background).draw()
     player1?.render(g)
-    player2?.render(g)
+    //player2?.render(g)
   }
 
   override fun getID() = id

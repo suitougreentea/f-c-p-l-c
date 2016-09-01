@@ -27,8 +27,8 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var garbageList: MutableList<Garbage> = ArrayList()
   var lastGarbageId = 0
 
-  var cursorX = 0
-  var cursorY = 0
+  var cursorX = 2
+  var cursorY = 2
 
   var swapTimer = 0
   var swapTimerMax = 4
@@ -153,7 +153,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     val newCursorY = cursorY + direction
     val valid = verticalMoveTimer * direction > 0
     if(Math.abs(verticalMoveTimer) == 1 || (Math.abs(verticalMoveTimer) >= moveTimerMax && valid))
-      if(floorY / 1000 <= newCursorY && newCursorY <= floorY / 1000 + height) cursorY = newCursorY
+      if(floorY / 1000 <= newCursorY && newCursorY <= floorY / 1000 + height - 1) cursorY = newCursorY
     if(valid) verticalMoveTimer += direction
   }
 
@@ -336,6 +336,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
         next[ix] = Block(floorY - 1000, nextNext[ix])
       }
     }
+    if(cursorY > floorY / 1000 + height - 1) cursorY --
   }
 
   // 自動せりあがり
@@ -605,9 +606,13 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       }
 
       // 本家は10個までしか保持できないらしいよ
-      eraseState.add(EraseState(eraseList, eraseListGarbage, chain,
+      if(eraseListGarbage.size > 0) eraseState.add(EraseState(eraseList, eraseListGarbage, chain,
               initEraseTime + eraseTimePerBlock * eraseList.size,
               initEraseTime + eraseTimePerBlock * (eraseList.size + eraseListGarbage.filter {e -> GameUtil.isInField(e.y, height, lowestY)}.size) + garbageAfterSpeed))
+      else eraseState.add(EraseState(eraseList, eraseListGarbage, chain,
+              initEraseTime + eraseTimePerBlock * eraseList.size,
+              initEraseTime + eraseTimePerBlock * eraseList.size))
+
       // 連鎖継続、あるいは1連鎖目の場合カウンターを上げる
       if (chain || this.chain == 0) this.chain++
 
@@ -623,6 +628,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   // chain状態のブロック、またはchain状態のeraseStateがあった場合は連鎖継続
   fun remainChain() {
     var remainChain = false
+    if(chain == 1 && eraseState.size > 0) remainChain = true
     for (col in field) {
       for (e in col) {
         if (!e.active && e.chain) e.chain = false
@@ -639,6 +645,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
     if ((swapLeftBlock != null && swapLeftBlock.chain) || (swapRightBlock != null) && swapRightBlock.chain) remainChain = true
 
     if (!remainChain) {
+      if(!isAnyActiveBlock() && chain > 0) event.endChain(chain)
       if (eraseState.size > 0) {
         chain = 1
       } else {

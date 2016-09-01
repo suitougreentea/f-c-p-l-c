@@ -10,8 +10,12 @@ import java.util.Comparator
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
 class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int): EventHandler {
+  val debug = true
   val pinchAnimation = arrayOf(4, 0, 0, 2, 2, 3, 3, 2, 2, 0, 0, 4)
   val landedAnimation = arrayOf(4, 4, 0, 2, 3, 2)
+  val jpFont = res.getFont(Res.Fnt.jp)
+  val eraseStateColor = arrayOf(Color.red, Color.green, Color.blue, Color.yellow, Color.cyan, Color.magenta)
+
   var timer = 0
   fun increaseTimer(){
     timer++
@@ -68,8 +72,6 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
           }
           val brightness = if(logic.gameOver) 1f - logic.gameOverTimer / logic.gameOverTimerMax.toFloat() else 1f
           drawBlock(g, ix * 40, dy, 40, b.color, state, brightness)
-          //if(b.active) res.getFont(Res.Fnt.jp).drawString("A", ix * 40, dy)
-          ///*if(b.active)*/ res.getFont(Res.Fnt.jp).drawString(b.stayTimer.toString(), ix * 40, dy + 20)
         }
       }
       g.popTransform()
@@ -84,16 +86,57 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
     for(e in spriteEraseList) {
       e.render(this, g, logic)
     }
-    /*logic.pinch.forEachIndexed { i, p ->
-      if(p) res.getFont(Res.Fnt.jp).drawString("P", i * 40, 0)
-    }*/
+
     g.clearWorldClip()
+
+    if(debug) {
+      logic.field.forEachIndexed { ix, col ->
+        col.forEachIndexed { iy, b ->
+          val dy = getFieldY(b.y, logic.height, logic.lowestY, 40)
+          jpFont.drawString(b.stayTimer.toString(), ix * 40, dy + 20)
+          jpFont.drawString(b.landedTimer.toString(), ix * 40 + 20, dy + 20)
+          if (b.active) jpFont.drawString("A", ix * 40, dy, color = Color(1f, 0f, 0f))
+          if (b.chain) jpFont.drawString("C", ix * 40 + 20, dy, color = Color(1f, 1f, 0f))
+          if (b.disabled) jpFont.drawString("D", ix * 40 + 30, dy, color = Color(0.5f, 0.5f, 0.5f))
+        }
+      }
+      logic.columnState.forEachIndexed { i, p ->
+        jpFont.drawString(p.toString(), i * 40, -20)
+      }
+      jpFont.drawString("""
+      |floorY: ${logic.floorY}
+      |lowestY: ${logic.lowestY}
+      |nextManualRiseTarget: ${logic.nextManualRiseTarget}
+      |chain: ${logic.chain}
+      |lastGarbageId: ${logic.lastGarbageId}
+      |gameOver: ${logic.gameOver}
+      |horizontalMoveTimer: ${logic.horizontalMoveTimer}
+      |verticalMoveTimer: ${logic.verticalMoveTimer}
+      |swapTimer: ${logic.swapTimer}
+      |pinchTimer: ${logic.pinchTimer}
+      |stopTimer: ${logic.stopTimer.toString()}
+      """.trimMargin(), 240, 0)
+      g.lineWidth = 2f
+      logic.eraseState.forEachIndexed { i, e ->
+        val color = eraseStateColor[i % eraseStateColor.size]
+        g.color = color
+        (e.eraseList + e.eraseListGarbage).forEach {
+          val dy = getFieldY(it.y, logic.height, logic.lowestY, 40)
+          g.drawRect(it.x * 40f, dy.toFloat(), 40f, 40f)
+        }
+        jpFont.drawString("c: ${e.chain}, t: ${e.timer}, max: ${e.timerMax}, gmax: ${e.timerMaxGarbage}", 240, 220 + i * 16, color = color)
+      }
+      logic.garbageList.forEachIndexed { i, e ->
+
+      }
+      g.lineWidth = 1f
+    }
+
     for(e in spriteChainComboSmallList) {
       e.render(this, g, logic)
     }
     if(!logic.gameOver) drawCursor(g, logic.cursorX * 40, getFieldY(logic.cursorY * 1000L, logic.height, logic.lowestY, 40), 40)
     g.popTransform()
-    res.getFont(Res.Fnt.jp).drawString(logic.stopTimer.toString(), 10, 10)
   }
 
   override fun erase(logic: GameLogic, chain: Boolean, eraseList: Set<EraseList>, eraseListGarbage: Set<EraseList>) {
@@ -115,6 +158,7 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
   }
 
   override fun gameOver(logic: GameLogic) {}
+  override fun endChain(chain: Int) {}
 
   // フィールド左上隅からのY座標を取得
   fun getFieldY(y: Long, fieldHeight: Int, lowestY: Long, size: Int): Int {
@@ -187,8 +231,6 @@ class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int)
     val srcY = 1f
     res.getImage(Res.Img.eraseEffect40).draw(dx - 39f, dy - 39f, dx + 79f, dy + 79f, srcX, srcY, srcX + 118f, srcY + 118f)
   }
-
-  val cursorColor = arrayOf(Color(1f, 0f, 0f), Color(1f, 1f, 0f))
 
   fun drawCursor(g: Graphics, dx: Int, dy: Int, size: Int) {
     val a = (timer % 60) / 30

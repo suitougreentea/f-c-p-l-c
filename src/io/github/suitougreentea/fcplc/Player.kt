@@ -28,5 +28,9 @@ class Player(val resource: SystemResource, mode: Int, player: Int, maxPlayer: In
   override fun gameOver(logic: GameLogic) {
     println("gameover")
   }
+
+  override fun endChain(chain: Int) {
+    println("You got ${chain} chain!")
+  }
 }
 
