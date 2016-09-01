@@ -9,7 +9,7 @@ import java.util.ArrayList
 import java.util.Comparator
 import io.github.suitougreentea.fcplc.SystemResource as Res
 
-class Renderer(val res: Res): EventHandler {
+class Renderer(val res: Res, val mode: Int, val player: Int, val maxPlayer: Int): EventHandler {
   val pinchAnimation = arrayOf(4, 0, 0, 2, 2, 3, 3, 2, 2, 0, 0, 4)
   val landedAnimation = arrayOf(4, 4, 0, 2, 3, 2)
   var timer = 0
@@ -41,11 +41,12 @@ class Renderer(val res: Res): EventHandler {
 
   fun render(g: Graphics, logic: GameLogic) {
     val pinchTimer = logic.pinchTimer / logic.pinchTimerMax.toFloat()
-    res.getImage(Res.Img.background).draw()
 
     g.pushTransform()
-    g.translate(280f, 92f)
-    //g.translate(0f, 92f)
+
+    if(maxPlayer == 1) g.translate(280f, 92f)
+    if(maxPlayer == 2) g.translate(60f + player * 400f, 92f)
+
     g.setColor(Color(0f, 0f, 0f, 0.6f))
     g.fillRect(0f, 0f, logic.width * 40f, logic.height * 40f)
     g.setWorldClip(0f, 0f, logic.width * 40f, logic.height * 40f)
@@ -57,7 +58,7 @@ class Renderer(val res: Res): EventHandler {
       for(b in col) {
         if(b.color > 0) {
           val dy = getFieldY(b.y, logic.height, logic.lowestY, 40)
-          val state = when(logic.columnState[ix]) {
+          val state = if(logic.gameOver) 7 else when(logic.columnState[ix]) {
             0 -> if(b.landedTimer > 0) {
               landedAnimation[(((b.landedTimer - 1) / logic.landedTimerMax.toFloat()) * landedAnimation.size).toInt()]
             } else 0
@@ -65,7 +66,8 @@ class Renderer(val res: Res): EventHandler {
             2 -> 4
             else -> throw IllegalStateException()
           }
-          drawBlock(g, ix * 40, dy, 40, b.color, state)
+          val brightness = if(logic.gameOver) 1f - logic.gameOverTimer / logic.gameOverTimerMax.toFloat() else 1f
+          drawBlock(g, ix * 40, dy, 40, b.color, state, brightness)
           //if(b.active) res.getFont(Res.Fnt.jp).drawString("A", ix * 40, dy)
           ///*if(b.active)*/ res.getFont(Res.Fnt.jp).drawString(b.stayTimer.toString(), ix * 40, dy + 20)
         }
@@ -82,14 +84,14 @@ class Renderer(val res: Res): EventHandler {
     for(e in spriteEraseList) {
       e.render(this, g, logic)
     }
-    for(e in spriteChainComboSmallList) {
-      e.render(this, g, logic)
-    }
     /*logic.pinch.forEachIndexed { i, p ->
       if(p) res.getFont(Res.Fnt.jp).drawString("P", i * 40, 0)
     }*/
     g.clearWorldClip()
-    drawCursor(g, logic.cursorX * 40, getFieldY(logic.cursorY * 1000L, logic.height, logic.lowestY, 40), 40)
+    for(e in spriteChainComboSmallList) {
+      e.render(this, g, logic)
+    }
+    if(!logic.gameOver) drawCursor(g, logic.cursorX * 40, getFieldY(logic.cursorY * 1000L, logic.height, logic.lowestY, 40), 40)
     g.popTransform()
     res.getFont(Res.Fnt.jp).drawString(logic.stopTimer.toString(), 10, 10)
   }
@@ -124,13 +126,13 @@ class Renderer(val res: Res): EventHandler {
   // 2-4 .. ピンチ
   // 5-6 .. 消去
   // 7-8 .. ゲームオーバー
-  fun drawBlock(g: Graphics, dx: Int, dy: Int, size: Int, color: Int, state: Int = 0) {
+  fun drawBlock(g: Graphics, dx: Int, dy: Int, size: Int, color: Int, state: Int = 0, brightness: Float = 1f) {
     if(size != 40) throw UnsupportedOperationException()
     val iBlock = res.getImage(Res.Img.block40)
     if(0 < color && color < 256) {
       val srcX = (color - 1) * 42 + 1f
       val srcY = state * 42f + 1f
-      iBlock.draw(dx.toFloat(), dy.toFloat(), dx + 40f, dy + 40f, srcX, srcY, srcX + 40f, srcY + 40f)
+      iBlock.draw(dx.toFloat(), dy.toFloat(), dx + 40f, dy + 40f, srcX, srcY, srcX + 40f, srcY + 40f, Color(brightness, brightness, brightness))
     }
   }
 

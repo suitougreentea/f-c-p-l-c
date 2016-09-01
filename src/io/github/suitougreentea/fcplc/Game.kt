@@ -22,13 +22,16 @@ class Game(val name: String): StateBasedGame(name) {
     val resource = Res()
 
     override fun initStatesList(container: GameContainer) {
+      container.input.initControllers()
         this.addState(StateLoading(States.LOADING, resource))
         this.addState(StateDebugMenu(States.DEBUG_MENU))
         this.addState(StatePlay(States.PLAY, resource))
     }
 
     override fun postUpdateState(container: GameContainer, delta: Int) {
-        container.getInput().clearKeyPressedRecord()
+      container.input.clearKeyPressedRecord()
+      container.input.clearControlPressedRecord()
+      container.input.clearMousePressedRecord()
     }
     override fun postRenderState(container: GameContainer, g: Graphics) {
         val fps = container.getFPS()

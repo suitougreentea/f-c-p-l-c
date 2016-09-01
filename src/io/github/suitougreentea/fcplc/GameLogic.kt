@@ -48,6 +48,10 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
   var chain = 0
 
+  var horizontalMoveTimer = 0
+  var verticalMoveTimer = 0
+  var moveTimerMax = 10
+
   var next: Array<Block>
   init {
     val nextNext = fieldRandomizer.next()
@@ -68,12 +72,12 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var garbageAfterSpeed = 40
   //var garbageAfterSpeed = 0
 
-  var initVelocity = 0
-  var acceralation = -30
-  var maxVelocity = -300
-  //var initVelocity = -1000
-  //var acceralation = 0
-  //var maxVelocity = -1000
+  //var initVelocity = 0
+  //var acceralation = -30
+  //var maxVelocity = -300
+  var initVelocity = -1000
+  var acceralation = 0
+  var maxVelocity = -1000
 
   var nextManualRiseTarget: Long? = null
 
@@ -82,7 +86,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   var gameOverTimerMax = 60
   var stopTimer = 0
 
-  fun update(input: Input) {
+  fun update(controller: Controller) {
     for(e in garbageList) {
       e.doneCurrentFrameActivation = false
       e.doneCurrentFrameDrop = false
@@ -101,31 +105,22 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
       return
     }
 
-    if (input.isKeyPressed(Input.KEY_LEFT) && cursorX >= 1) cursorX--
-    if (input.isKeyPressed(Input.KEY_RIGHT) && cursorX <= width - 3) cursorX++
-    if (input.isKeyPressed(Input.KEY_DOWN) && cursorY >= floorY / 1000 + 1) cursorY--
-    if (input.isKeyPressed(Input.KEY_UP) && cursorY <= height - 2) cursorY++
-    if (input.isKeyPressed(Input.KEY_1)) generateGarbage(0, 10000L, 3, 1)
-    if (input.isKeyPressed(Input.KEY_Q)) generateGarbage(1, 10000L, 3, 1)
-    if (input.isKeyPressed(Input.KEY_A)) generateGarbage(2, 10000L, 3, 1)
-    if (input.isKeyPressed(Input.KEY_Z)) generateGarbage(3, 10000L, 3, 1)
-    if (input.isKeyPressed(Input.KEY_2)) generateGarbage(0, 10000L, 4, 1)
-    if (input.isKeyPressed(Input.KEY_W)) generateGarbage(1, 10000L, 4, 1)
-    if (input.isKeyPressed(Input.KEY_S)) generateGarbage(2, 10000L, 4, 1)
-    if (input.isKeyPressed(Input.KEY_3)) generateGarbage(0, 10000L, 5, 1)
-    if (input.isKeyPressed(Input.KEY_E)) generateGarbage(1, 10000L, 5, 1)
-    if (input.isKeyPressed(Input.KEY_4)) generateGarbage(0, 10000L, 6, 1)
-    if (input.isKeyPressed(Input.KEY_5)) generateGarbage(0, 10000L, 6, 5)
-    if (input.isKeyPressed(Input.KEY_6)) generateGarbage(0, 10000L, 6, 30)
-    if (input.isKeyPressed(Input.KEY_LSHIFT)) dropTestBlock()
+    if (controller.isPressed(Controller.Button.LEFT))  horizontalMovePressed(-1)
+    if (controller.isDown   (Controller.Button.LEFT))  horizontalMoveDown(-1)
+    if (controller.isPressed(Controller.Button.RIGHT)) horizontalMovePressed(1)
+    if (controller.isDown   (Controller.Button.RIGHT)) horizontalMoveDown(1)
+    if (controller.isPressed(Controller.Button.DOWN))  verticalMovePressed(-1)
+    if (controller.isDown   (Controller.Button.DOWN))  verticalMoveDown(-1)
+    if (controller.isPressed(Controller.Button.UP))    verticalMovePressed(1)
+    if (controller.isDown   (Controller.Button.UP))    verticalMoveDown(1)
 
     updateColumnState()
     updatePinchTimer()
     automaticRise()
-    if (input.isKeyDown(Input.KEY_ENTER)) manualRise()
+    if (controller.isDown(Controller.Button.RISE)) manualRise()
     automaticManualRise()
 
-    if (input.isKeyPressed(Input.KEY_SPACE)) swap()
+    if (controller.isPressed(Controller.Button.FLIP)) swap()
     countSwap()
 
     updateLandedTimer()
@@ -137,6 +132,31 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
     countErase()
   }
+
+  fun horizontalMovePressed(direction: Int) {
+    horizontalMoveTimer = direction
+  }
+
+  fun verticalMovePressed(direction: Int) {
+    verticalMoveTimer = direction
+  }
+
+  fun horizontalMoveDown(direction: Int) {
+    val newCursorX = cursorX + direction
+    val valid = horizontalMoveTimer * direction > 0
+    if(Math.abs(horizontalMoveTimer) == 1 || (Math.abs(horizontalMoveTimer) >= moveTimerMax && valid))
+      if(0 <= newCursorX && newCursorX <= width - 2) cursorX = newCursorX
+    if(valid) horizontalMoveTimer += direction
+  }
+
+  fun verticalMoveDown(direction: Int) {
+    val newCursorY = cursorY + direction
+    val valid = verticalMoveTimer * direction > 0
+    if(Math.abs(verticalMoveTimer) == 1 || (Math.abs(verticalMoveTimer) >= moveTimerMax && valid))
+      if(floorY / 1000 <= newCursorY && newCursorY <= floorY / 1000 + height) cursorY = newCursorY
+    if(valid) verticalMoveTimer += direction
+  }
+
 
   // 現在のカーソル位置でswapを行う
   fun swap() {
@@ -277,8 +297,8 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
 
   fun updateColumnState() {
     columnState = field.map {
-      if((it.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 1000L) 2
-      else if((it.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 2000L) 1
+      if((it.filter { !it.active }.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 1000L) 2
+      else if((it.filter { !it.active }.map { it.y }.max() ?: Long.MIN_VALUE) >= lowestY + height * 1000L - 2000L) 1
       else 0
     }
   }
@@ -293,7 +313,7 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   }
 
   fun isAnyActiveBlock() = field.any { it.any { it.active } }
-  fun getTopMostY() = (field.map { it.map { it.y }.max() ?: Long.MIN_VALUE }.max() ?: Long.MIN_VALUE)
+  fun getTopMostY() = (field.map { it.filter { !it.active }.map { it.y }.max() ?: Long.MIN_VALUE }.max() ?: Long.MIN_VALUE)
   fun isDead() = lowestY + height * 1000L <= getTopMostY() + 1000L
 
   fun judgeGameOver(): Boolean {
@@ -679,6 +699,11 @@ class GameLogic(val width: Int, val height: Int, val numColor: Int, val event: E
   }
 
   // おじゃまを降らす
+  fun dropGarbage(baseX: Int, width: Int, height: Int, disabled: Boolean = false) {
+    val baseY = Math.max(lowestY + this.height * 1000L, getTopMostY()) + 1000L
+    generateGarbage(baseX, baseY, width, height, disabled)
+  }
+
   fun generateGarbage(baseX: Int, baseY: Long, width: Int, height: Int, disabled: Boolean = false) {
     if(height > 1 && width != 6) throw UnsupportedOperationException()
     val blockList: Array<MutableList<BlockGarbage>> = Array(this.width, { ArrayList<BlockGarbage>() })

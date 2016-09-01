@@ -3,13 +3,13 @@ package io.github.suitougreentea.fcplc
 import org.newdawn.slick.Graphics
 import org.newdawn.slick.Input
 
-class Player(val resource: SystemResource): EventHandler {
+class Player(val resource: SystemResource, mode: Int, player: Int, maxPlayer: Int): EventHandler {
   val logic: GameLogic = GameLogic(6, 12, 5, this)
-  val renderer = Renderer(resource)
+  val renderer = Renderer(resource, mode, player, maxPlayer)
 
-  fun update(input: Input) {
+  fun update(controller: Controller) {
     renderer.increaseTimer()
-    logic.update(input)
+    logic.update(controller)
   }
 
   fun render(g: Graphics) {

@@ -112,34 +112,37 @@ class SpriteChainComboSmall(val renderer: Renderer, val x: Int, val y: Long, val
   val foregroundColor = arrayOf(Color(1f, 1f, 1f, 1f), Color(1f, 1f, 1f, 0.7f))
 
   override fun render(r: Renderer, g: Graphics, logic: GameLogic) {
+    val components = arrayOf(chain != null, combo != null, stop).filter { it }.size
     val ic = renderer.res.getImage(Res.Img.chain)
-    val dx = x * size
-    val chaindy = r.getFieldY(y, logic.height, logic.lowestY, size)
-    val combody = r.getFieldY(y, logic.height, logic.lowestY, size) + if(chain != null) 24 else 0
-    val stopdy = r.getFieldY(y, logic.height, logic.lowestY, size) + if(chain != null) 24 else 0 + if(combo != null) 24 else 0
+    val dx = x * size - 24
+    var dy = r.getFieldY(y, logic.height, logic.lowestY, size) - components * 24
+    val t = timer / timerMax.toFloat()
+    dy -= (Math.pow(t - 0.5, 7.0) * 3000).toInt()
     if(chain != null) {
-      ic.draw(dx.toFloat(), chaindy.toFloat(), dx + 14f, chaindy + 24f, 985f, 920f, 985f + 14f, 920f + 24f, chainColor[timer % 2])
-      ic.draw(dx.toFloat(), chaindy.toFloat(), dx + 14f, chaindy + 24f, 985f, 408f, 985f + 14f, 408f + 24f, foregroundColor[timer % 2])
+      ic.draw(dx.toFloat(), dy.toFloat(), dx + 14f, dy + 24f, 985f, 920f, 985f + 14f, 920f + 24f, chainColor[timer % 2])
+      ic.draw(dx.toFloat(), dy.toFloat(), dx + 14f, dy + 24f, 985f, 408f, 985f + 14f, 408f + 24f, foregroundColor[timer % 2])
       val chainStr = chain.toString()
       for (i in chainStr.indices) {
         val c = chainStr[i].toInt()
-        drawNum(dx + (i + 1) * 14, chaindy, c - 48, true, chainColor[timer % 2])
-        drawNum(dx + (i + 1) * 14, chaindy, c - 48, false, foregroundColor[timer % 2])
+        drawNum(dx + (i + 1) * 14, dy, c - 48, true, chainColor[timer % 2])
+        drawNum(dx + (i + 1) * 14, dy, c - 48, false, foregroundColor[timer % 2])
       }
+      dy += 24
     }
     if(combo != null) {
-      ic.draw(dx.toFloat(), combody.toFloat(), dx + 14f, combody + 24f, 969f, 920f, 969f + 14f, 920f + 24f, comboColor[timer % 2])
-      ic.draw(dx.toFloat(), combody.toFloat(), dx + 14f, combody + 24f, 969f, 408f, 969f + 14f, 408f + 24f, foregroundColor[timer % 2])
+      ic.draw(dx.toFloat(), dy.toFloat(), dx + 14f, dy + 24f, 969f, 920f, 969f + 14f, 920f + 24f, comboColor[timer % 2])
+      ic.draw(dx.toFloat(), dy.toFloat(), dx + 14f, dy + 24f, 969f, 408f, 969f + 14f, 408f + 24f, foregroundColor[timer % 2])
       val comboStr = combo.toString()
       for (i in comboStr.indices) {
         val c = comboStr[i].toInt()
-        drawNum(dx + (i + 1) * 14, combody, 48, true, comboColor[timer % 2])
-        drawNum(dx + (i + 1) * 14, combody, c - 48, false, foregroundColor[timer % 2])
+        drawNum(dx + (i + 1) * 14, dy, 48, true, comboColor[timer % 2])
+        drawNum(dx + (i + 1) * 14, dy, c - 48, false, foregroundColor[timer % 2])
       }
+      dy += 24
     }
     if(stop) {
-      ic.draw(dx.toFloat(), stopdy.toFloat(), dx + 58f, stopdy + 24f, 808f, 952f, 808f + 58f, 952f + 24f, stopColor[timer % 2])
-      ic.draw(dx.toFloat(), stopdy.toFloat(), dx + 58f, stopdy + 24f, 808f, 440f, 808f + 58f, 440f + 24f, foregroundColor[timer % 2])
+      ic.draw(dx.toFloat(), dy.toFloat(), dx + 58f, dy + 24f, 808f, 952f, 808f + 58f, 952f + 24f, stopColor[timer % 2])
+      ic.draw(dx.toFloat(), dy.toFloat(), dx + 58f, dy + 24f, 808f, 440f, 808f + 58f, 440f + 24f, foregroundColor[timer % 2])
     }
   }
 
